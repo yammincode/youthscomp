@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>查詢報名｜青少年攀岩系列賽</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap" style="padding-top:28px; max-width:560px">
+  <h1 style="margin:0 0 6px">查詢報名</h1>
+  <p class="muted" style="margin:0 0 20px">輸入報名編號與監護人手機，查看繳費狀態或回報匯款。</p>
+  <form id="q" class="card">
+    <div class="field"><label class="lbl" for="code">報名編號</label><input type="text" id="code" name="code" autocapitalize="characters" required></div>
+    <div class="field"><label class="lbl" for="phone">監護人手機</label><input type="tel" id="phone" name="phone" inputmode="numeric" required></div>
+    <button class="btn" type="submit">查詢</button>
+    <div id="err" class="alert err hidden"></div>
+  </form>
+
+  <div id="result" class="card hidden" style="margin-top:16px"></div>
+
+  <form id="pay" class="card hidden" style="margin-top:16px">
+    <h3>回報匯款</h3>
+    <p class="small muted" id="payInfo"></p>
+    <div class="field"><label class="lbl" for="last5">匯款帳號末五碼</label><input type="text" id="last5" inputmode="numeric" maxlength="5" required></div>
+    <button class="btn" type="submit">送出</button>
+    <div id="payMsg" class="alert hidden"></div>
+  </form>
+</main>
+<script type="module">
+  import { loadConfig, fmt, esc, renderChrome, STATUS } from "./common.js";
+  renderChrome("lookup.html");
+  const c = await loadConfig();
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  if (params.get("code")) $("code").value = params.get("code");
+
+  async function call(extra = {}) {
+    const res = await fetch("/api/lookup", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: $("code").value, phone: $("phone").value, ...extra }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+  }
+
+  function show(r) {
+    const d = c.divisions.find(d => d.id === r.division);
+    $("result").innerHTML = `<h3>${esc(r.athleteName)}　<span class="badge ${r.status}">${STATUS[r.status]}</span></h3>
+      <div class="small">報名編號：<b>${esc(r.code)}</b><br>組別：${esc(d?.label)}<br>
+      場次：${r.events.map(id => esc(c.events.find(e => e.id === id)?.name)).join("、")}<br>
+      金額：<b>${fmt(r.amount)}</b>${r.transferLast5 ? `<br>已回報末五碼：${esc(r.transferLast5)}（待主辦確認）` : ""}</div>`;
+    $("result").classList.remove("hidden");
+    $("pay").classList.toggle("hidden", r.status !== "pending");
+    $("payInfo").innerHTML = `${esc(c.payment.bank)}　帳號 ${esc(c.payment.account)}　戶名 ${esc(c.payment.holder)}　金額 ${fmt(r.amount)}`;
+    if (r.transferLast5) $("last5").value = r.transferLast5;
+  }
+
+  $("q").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("err").classList.add("hidden");
+    try { show(await call()); }
+    catch (er) { $("err").textContent = er.message; $("err").classList.remove("hidden"); $("result").classList.add("hidden"); $("pay").classList.add("hidden"); }
+  });
+  $("pay").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const m = $("payMsg");
+    try { show(await call({ transferLast5: $("last5").value })); m.className = "alert ok"; m.textContent = "已收到，主辦單位確認後狀態會改為「已繳費」。"; }
+    catch (er) { m.className = "alert err"; m.textContent = er.message; }
+  });
+</script>
+</body>
+</html>
