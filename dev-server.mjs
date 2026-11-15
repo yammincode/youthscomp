@@ -14,7 +14,7 @@ process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ apiURL: `http:/
 process.env.ADMIN_PASSWORD ??= "test123";
 
 const fns = {};
-for (const n of ["config", "register", "lookup", "admin"]) {
+for (const n of (await import("node:fs")).readdirSync(path.join(root, "netlify/functions")).map((f) => f.replace(/\.mjs$/, ""))) {
   const m = await import(`./netlify/functions/${n}.mjs`);
   fns[m.config.path] = m.default;
 }

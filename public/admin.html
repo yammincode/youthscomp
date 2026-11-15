@@ -4,19 +4,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>報名管理｜青少年攀岩系列賽</title>
+<title>管理後台｜青少年攀岩系列賽</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-  .wrap { max-width: 1200px; }
+  .wrap { max-width: 1240px; }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
   .toolbar select, .toolbar input { width: auto; font-size: 14px; padding: 7px 10px; }
   .stat-num { font-size: 26px; font-weight: 800; }
   td select { width: auto; font-size: 13px; padding: 4px 6px; }
   .cnt { text-align: center; }
+  .mismatch { color: var(--danger); font-weight: 800; }
+  .grid-table td, .grid-table th { padding: 6px 8px; text-align: center; }
+  .grid-table td:first-child, .grid-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+  .grid-table input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--brand); }
+  .grid-table input.att { width: 64px; padding: 4px 6px; font-size: 14px; }
+  .route-th { font-size: 12px; line-height: 1.2; }
+  .saving { color: var(--muted); font-size: 12px; }
+  .routes-table input[type=text], .routes-table input[type=number] { padding: 5px 8px; font-size: 14px; width: 90px; }
+  .routes-table label { margin-right: 10px; font-size: 13px; white-space: nowrap; }
+  .tabs .count { background: var(--danger); color: #fff; border-radius: 999px; padding: 0 7px; margin-left: 4px; font-size: 12px; }
 </style>
 </head>
 <body>
-<header class="site"><div class="wrap"><a class="logo" href="index.html">🧗 <span>報名</span>管理</a><nav><button class="btn ghost sm hidden" id="logout">登出</button></nav></div></header>
+<header class="site"><div class="wrap"><a class="logo" href="index.html">🧗 管理後台</a><nav><a href="results.html" target="_blank">成績頁</a><button class="btn ghost sm hidden" id="logout" style="margin-left:12px">登出</button></nav></div></header>
 <main class="wrap" style="padding-top:24px">
   <form id="login" class="card" style="max-width:380px">
     <h3>管理員登入</h3>
@@ -26,30 +36,66 @@
   </form>
 
   <div id="app" class="hidden">
-    <div class="grid c4" id="kpis"></div>
+    <div class="tabs" id="mainTabs"></div>
 
-    <section>
-      <h2>各場各組人數 <span class="small muted" style="font-weight:400">（不含已取消；男/女）</span></h2>
-      <div class="table-scroll"><table id="statTable"></table></div>
-      <p class="small muted" id="splitHint"></p>
-    </section>
+    <!-- 報名名單 -->
+    <div data-pane="regs">
+      <div class="grid c4" id="kpis"></div>
+      <section>
+        <h2>各場各組人數 <span class="small muted" style="font-weight:400">（不含已取消；男/女）</span></h2>
+        <div class="table-scroll"><table id="statTable"></table></div>
+        <p class="small muted" id="splitHint"></p>
+      </section>
+      <section>
+        <h2>報名名單</h2>
+        <div class="toolbar">
+          <select id="fEvent"><option value="">全部場次</option></select>
+          <select id="fDiv"><option value="">全部組別</option></select>
+          <select id="fStatus"><option value="">全部狀態</option></select>
+          <input type="text" id="fText" placeholder="搜尋姓名／編號／手機">
+          <button class="btn ghost sm" id="reload">重新整理</button>
+          <button class="btn sm" id="csv">匯出 CSV</button>
+        </div>
+        <div class="table-scroll"><table id="list"></table></div>
+      </section>
+    </div>
 
-    <section>
-      <h2>報名名單</h2>
+    <!-- 待確認繳費 -->
+    <div data-pane="confirm" class="hidden">
+      <p class="muted">家長登錄的匯款資訊。核對銀行入帳後按「確認已繳費」；查無款項請按「退回」並填寫原因（家長查詢時看得到）。</p>
+      <div class="table-scroll"><table id="confirmList"></table></div>
+    </div>
+
+    <!-- 路線設定 -->
+    <div data-pane="routes" class="hidden">
       <div class="toolbar">
-        <select id="fEvent"><option value="">全部場次</option></select>
-        <select id="fDiv"><option value="">全部組別</option></select>
-        <select id="fStatus"><option value="">全部狀態</option><option value="pending">待繳費</option><option value="paid">已繳費</option><option value="cancelled">已取消</option></select>
-        <input type="text" id="fText" placeholder="搜尋姓名／編號／手機">
-        <button class="btn ghost sm" id="reload">重新整理</button>
-        <button class="btn sm" id="csv">匯出 CSV</button>
+        <select id="rEvent"></select>
+        <button class="btn ghost sm" id="rAdd">＋ 新增路線</button>
+        <button class="btn ghost sm" id="rDefault">套用預設 24 條（相鄰組別共 4 條）</button>
+        <select id="rCopyFrom"><option value="">從其他場次複製…</option></select>
+        <button class="btn sm" id="rSave">儲存路線</button>
+        <span id="rMsg" class="small"></span>
       </div>
-      <div class="table-scroll"><table id="list"></table></div>
-    </section>
+      <div class="table-scroll"><table class="routes-table" id="routesTable"></table></div>
+      <p class="small muted" id="routesSummary"></p>
+    </div>
+
+    <!-- 成績登錄 -->
+    <div data-pane="scores" class="hidden">
+      <div class="toolbar">
+        <select id="sEvent"></select>
+        <select id="sCat"></select>
+        <label class="small">公布狀態</label><select id="sStatus"></select>
+        <a class="btn ghost sm" id="sView" target="_blank">看成績頁 ↗</a>
+      </div>
+      <p class="small muted">勾選完攀的路線、填寫完攀所用總嘗試次數，系統會自動儲存。沒有任何紀錄的選手視為未出賽，不列入排名。</p>
+      <div id="scoreArea"></div>
+    </div>
   </div>
 </main>
+
 <script type="module">
-  import { loadConfig, fmt, esc, STATUS } from "./common.js";
+  import { loadConfig, fmt, esc, STATUS, renderTabs } from "./common.js";
   const c = await loadConfig();
   const $ = (id) => document.getElementById(id);
   let pw = "", regs = [];
@@ -57,59 +103,71 @@
   const evName = Object.fromEntries(c.events.map(e => [e.id, e.name]));
   const divById = Object.fromEntries(c.divisions.map(d => [d.id, d]));
   const gradeLabel = Object.fromEntries(c.grades.map(g => [g.id, g.label]));
-  $("fEvent").innerHTML += c.events.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
+  const evOptions = c.events.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
+  $("fEvent").innerHTML += evOptions;
   $("fDiv").innerHTML += c.divisions.map(d => `<option value="${d.id}">${esc(d.label)}</option>`).join("");
+  $("fStatus").innerHTML += Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  $("rEvent").innerHTML = $("sEvent").innerHTML = evOptions;
+  $("sStatus").innerHTML = Object.entries(c.resultStatus).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
 
-  async function api(method, body) {
-    const res = await fetch("/api/admin", { method, headers: { "x-admin-password": pw, "content-type": "application/json" }, body: body && JSON.stringify(body) });
+  async function api(method, body, query = "") {
+    const res = await fetch("/api/admin" + query, { method, headers: { "x-admin-password": pw, "content-type": "application/json" }, body: body && JSON.stringify(body) });
     const data = await res.json();
     if (!res.ok) throw Object.assign(new Error(data.error), { status: res.status });
     return data;
+  }
+
+  // ---------- 分頁 ----------
+  let pane = "regs";
+  function renderMainTabs() {
+    const n = regs.filter(r => r.status === "reported").length;
+    renderTabs($("mainTabs"), [["regs", "報名名單"], ["confirm", "待確認繳費" + (n ? ` (${n})` : "")], ["routes", "路線設定"], ["scores", "成績登錄"]], pane, (id) => {
+      pane = id;
+      document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", p.dataset.pane !== id));
+      if (id === "routes") loadRoutes();
+      if (id === "scores") loadScores();
+    });
   }
 
   async function load() {
     try {
       regs = (await api("GET")).registrations;
       $("login").classList.add("hidden"); $("app").classList.remove("hidden"); $("logout").classList.remove("hidden");
-      render();
+      renderMainTabs(); renderRegs(); renderConfirm();
     } catch (e) {
       $("login").classList.remove("hidden"); $("app").classList.add("hidden");
       if (pw) { $("loginErr").textContent = e.message; $("loginErr").classList.remove("hidden"); }
     }
   }
 
-  function render() {
+  // ---------- 報名名單 ----------
+  function renderRegs() {
     const active = regs.filter(r => r.status !== "cancelled");
     const paid = regs.filter(r => r.status === "paid");
-    const pend = regs.filter(r => r.status === "pending");
+    const unpaid = regs.filter(r => r.status === "pending" || r.status === "reported");
     const athletes = new Set(active.map(r => r.athlete.name + r.athlete.birthday)).size;
     $("kpis").innerHTML = [
       ["有效報名", active.length + " 筆", `${athletes} 位選手`],
       ["已繳費", fmt(paid.reduce((s, r) => s + r.amount, 0)), paid.length + " 筆"],
-      ["待繳費", fmt(pend.reduce((s, r) => s + r.amount, 0)), pend.length + " 筆（" + pend.filter(r => r.transferLast5).length + " 筆已回報）"],
+      ["未確認款項", fmt(unpaid.reduce((s, r) => s + r.amount, 0)), `待繳費 ${regs.filter(r => r.status === "pending").length}・待確認 ${regs.filter(r => r.status === "reported").length}`],
       ["四場套票", active.filter(r => r.events.length === c.events.length).length + " 筆", ""],
     ].map(([t, v, s]) => `<div class="card"><div class="small muted">${t}</div><div class="stat-num">${v}</div><div class="small muted">${s}</div></div>`).join("");
 
-    // 人數統計
     let splitFlags = 0;
     const head = `<thead><tr><th>組別</th>${c.events.map(e => `<th class="cnt">${esc(e.name)}</th>`).join("")}</tr></thead>`;
-    const rows = c.divisions.map(d => {
-      const cells = c.events.map(e => {
-        const list = active.filter(r => r.division === d.id && r.events.includes(e.id));
-        const m = list.filter(r => r.athlete.gender === "M").length, f = list.length - m;
-        const split = d.splitByGender && (m > c.genderSplitThreshold || f > c.genderSplitThreshold);
-        if (split) splitFlags++;
-        return `<td class="cnt"><b>${list.length}</b> <span class="small muted">(${m}/${f})</span>${split ? '<br><span class="badge split">需拆男女組</span>' : ""}</td>`;
-      }).join("");
-      return `<tr><td><b>${esc(d.label)}</b></td>${cells}</tr>`;
-    }).join("");
+    const rows = c.divisions.map(d => `<tr><td><b>${esc(d.label)}</b></td>${c.events.map(e => {
+      const list = active.filter(r => r.division === d.id && r.events.includes(e.id));
+      const m = list.filter(r => r.athlete.gender === "M").length, f = list.length - m;
+      const split = d.splitByGender && (m > c.genderSplitThreshold || f > c.genderSplitThreshold);
+      if (split) splitFlags++;
+      return `<td class="cnt"><b>${list.length}</b> <span class="small muted">(${m}/${f})</span>${split ? '<br><span class="badge split">已拆男女組</span>' : ""}</td>`;
+    }).join("")}</tr>`).join("");
     const totals = `<tr><td><b>合計</b></td>${c.events.map(e => `<td class="cnt"><b>${active.filter(r => r.events.includes(e.id)).length}</b></td>`).join("")}</tr>`;
     $("statTable").innerHTML = head + "<tbody>" + rows + totals + "</tbody>";
-    $("splitHint").textContent = splitFlags ? `⚠️ 有 ${splitFlags} 個場次組別單一性別超過 ${c.genderSplitThreshold} 人，需拆男女組。` : `單一性別超過 ${c.genderSplitThreshold} 人時會標示「需拆男女組」。`;
+    $("splitHint").textContent = splitFlags ? `⚠️ 有 ${splitFlags} 個場次組別單一性別超過 ${c.genderSplitThreshold} 人，名單與成績已自動拆為男女組。` : `單一性別超過 ${c.genderSplitThreshold} 人時會自動拆男女組。`;
 
-    // 名單
     const list = filtered();
-    $("list").innerHTML = `<thead><tr><th>編號</th><th>選手</th><th>組別</th><th>場次</th><th>金額</th><th>監護人</th><th>末五碼</th><th>狀態</th><th>報名時間</th></tr></thead><tbody>` +
+    $("list").innerHTML = `<thead><tr><th>編號</th><th>選手</th><th>組別</th><th>場次</th><th>金額</th><th>監護人</th><th>匯款資訊</th><th>狀態</th><th>報名時間</th></tr></thead><tbody>` +
       (list.length ? list.map(r => `<tr>
         <td><b>${esc(r.code)}</b></td>
         <td>${esc(r.athlete.name)}　${r.athlete.gender === "M" ? "男" : "女"}<br><span class="small muted">${esc(gradeLabel[r.athlete.grade])}・${esc(r.athlete.school)}${r.athlete.team ? "・" + esc(r.athlete.team) : ""}</span>${r.note ? `<br><span class="small">📝 ${esc(r.note)}</span>` : ""}</td>
@@ -117,11 +175,15 @@
         <td class="small">${r.events.map(id => esc(evName[id])).join("<br>")}</td>
         <td>${fmt(r.amount)}</td>
         <td class="small">${esc(r.guardian.name)}<br>${esc(r.guardian.phone)}<br>${esc(r.guardian.email)}</td>
-        <td>${esc(r.transferLast5 || "—")}</td>
+        <td class="small">${payInfo(r)}</td>
         <td><select data-code="${esc(r.code)}">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === r.status ? "selected" : ""}>${v}</option>`).join("")}</select></td>
         <td class="small muted">${new Date(r.createdAt).toLocaleString("zh-TW", { hour12: false })}</td>
       </tr>`).join("") : `<tr><td colspan="9" class="muted">沒有資料</td></tr>`) + "</tbody>";
   }
+
+  const payInfo = (r) => r.payReport
+    ? `${esc(r.payReport.date)}<br>末五碼 <b>${esc(r.payReport.last5)}</b><br><span class="${r.payReport.amount !== r.amount ? "mismatch" : ""}">${fmt(r.payReport.amount)}</span>`
+    : (r.transferLast5 ? `末五碼 ${esc(r.transferLast5)}` : "—");
 
   function filtered() {
     const ev = $("fEvent").value, dv = $("fDiv").value, st = $("fStatus").value, t = $("fText").value.trim().toUpperCase();
@@ -129,32 +191,175 @@
       (!t || r.code.includes(t) || r.athlete.name.toUpperCase().includes(t) || r.guardian.phone.includes(t))).reverse();
   }
 
+  async function setStatus(code, status, reason) {
+    const { registration } = await api("POST", { action: "setStatus", code, status, reason });
+    regs = regs.map(r => r.code === registration.code ? registration : r);
+    renderMainTabs(); renderRegs(); renderConfirm();
+  }
+
   $("list").addEventListener("change", async (e) => {
     const sel = e.target.closest("select[data-code]");
-    if (!sel) return;
-    try {
-      const { registration } = await api("POST", { code: sel.dataset.code, status: sel.value });
-      regs = regs.map(r => r.code === registration.code ? registration : r);
-      render();
-    } catch (er) { alert(er.message); load(); }
+    if (sel) try { await setStatus(sel.dataset.code, sel.value); } catch (er) { alert(er.message); load(); }
   });
-  ["fEvent", "fDiv", "fStatus"].forEach(id => $(id).addEventListener("change", render));
-  $("fText").addEventListener("input", render);
+  ["fEvent", "fDiv", "fStatus"].forEach(id => $(id).addEventListener("change", renderRegs));
+  $("fText").addEventListener("input", renderRegs);
   $("reload").onclick = load;
-  $("login").addEventListener("submit", (e) => { e.preventDefault(); pw = $("pw").value; try { sessionStorage.setItem("adminpw", pw); } catch {} load(); });
-  $("logout").onclick = () => { try { sessionStorage.removeItem("adminpw"); } catch {} location.reload(); };
 
   $("csv").onclick = () => {
-    const cols = ["報名編號", "報名時間", "狀態", "選手姓名", "性別", "生日", "年級", "學校", "隊伍/教練", "組別", ...c.events.map(e => e.name), "金額", "匯款末五碼", "監護人", "監護人手機", "Email", "緊急聯絡人", "緊急聯絡電話", "備註"];
+    const cols = ["報名編號", "報名時間", "狀態", "選手姓名", "性別", "生日", "年級", "學校", "隊伍/教練", "組別", ...c.events.map(e => e.name), "金額", "匯款日期", "匯款末五碼", "匯款金額", "監護人", "監護人手機", "Email", "緊急聯絡人", "緊急聯絡電話", "備註"];
     const rows = filtered().map(r => [r.code, new Date(r.createdAt).toLocaleString("zh-TW", { hour12: false }), STATUS[r.status], r.athlete.name, r.athlete.gender === "M" ? "男" : "女", r.athlete.birthday, gradeLabel[r.athlete.grade], r.athlete.school, r.athlete.team, divById[r.division]?.label,
-      ...c.events.map(e => r.events.includes(e.id) ? "V" : ""), r.amount, r.transferLast5, r.guardian.name, r.guardian.phone, r.guardian.email, r.guardian.emergencyName, r.guardian.emergencyPhone, r.note]);
-    const csv = [cols, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+      ...c.events.map(e => r.events.includes(e.id) ? "V" : ""), r.amount, r.payReport?.date, r.payReport?.last5 || r.transferLast5, r.payReport?.amount, r.guardian.name, r.guardian.phone, r.guardian.email, r.guardian.emergencyName, r.guardian.emergencyPhone, r.note]);
+    downloadCsv([cols, ...rows], `報名名單_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+  function downloadCsv(rows, name) {
+    const csv = rows.map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-    a.download = `報名名單_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+    a.download = name; a.click();
+  }
+
+  // ---------- 待確認繳費 ----------
+  function renderConfirm() {
+    const list = regs.filter(r => r.status === "reported");
+    $("confirmList").innerHTML = `<thead><tr><th>編號</th><th>選手</th><th>監護人</th><th class="num">應繳</th><th class="num">回報金額</th><th>末五碼</th><th>匯款日期</th><th></th></tr></thead><tbody>` +
+      (list.length ? list.map(r => `<tr>
+        <td><b>${esc(r.code)}</b></td><td>${esc(r.athlete.name)}<br><span class="small muted">${r.events.map(id => esc(evName[id])).join("、")}</span></td>
+        <td class="small">${esc(r.guardian.name)}<br>${esc(r.guardian.phone)}</td>
+        <td class="num">${fmt(r.amount)}</td>
+        <td class="num ${r.payReport?.amount !== r.amount ? "mismatch" : ""}">${fmt(r.payReport?.amount || 0)}${r.payReport?.amount !== r.amount ? "<br>⚠️ 金額不符" : ""}</td>
+        <td><b>${esc(r.payReport?.last5)}</b></td><td>${esc(r.payReport?.date)}</td>
+        <td style="white-space:nowrap"><button class="btn sm" data-ok="${esc(r.code)}">✅ 確認已繳費</button> <button class="btn ghost sm" data-reject="${esc(r.code)}">❌ 退回</button></td>
+      </tr>`).join("") : `<tr><td colspan="8" class="muted">目前沒有待確認的繳費</td></tr>`) + "</tbody>";
+  }
+  $("confirmList").addEventListener("click", async (e) => {
+    const ok = e.target.closest("[data-ok]"), rej = e.target.closest("[data-reject]");
+    try {
+      if (ok) await setStatus(ok.dataset.ok, "paid");
+      if (rej) {
+        const reason = prompt("退回原因（家長查詢時會看到）", "查無此筆匯款，請確認匯款資訊");
+        if (reason !== null) await setStatus(rej.dataset.reject, "pending", reason || "繳費資訊有誤");
+      }
+    } catch (er) { alert(er.message); }
+  });
+
+  // ---------- 路線設定 ----------
+  let routes = [];
+  async function loadRoutes() {
+    $("rMsg").textContent = "";
+    routes = (await api("GET", null, "?event=" + $("rEvent").value)).routes;
+    $("rCopyFrom").innerHTML = `<option value="">從其他場次複製…</option>` + c.events.filter(e => e.id !== $("rEvent").value).map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
+    renderRoutes();
+  }
+  function renderRoutes() {
+    $("routesTable").innerHTML = `<thead><tr><th>路線</th><th>分數</th><th>適用組別</th><th></th></tr></thead><tbody>` +
+      (routes.length ? routes.map((r, i) => `<tr data-i="${i}">
+        <td><input type="text" data-f="id" value="${esc(r.id)}"></td>
+        <td><input type="number" data-f="points" value="${r.points}" min="0" step="10"></td>
+        <td>${c.divisions.map(d => `<label><input type="checkbox" data-div="${d.id}" ${r.divisions.includes(d.id) ? "checked" : ""}> ${esc(d.label)}</label>`).join("")}</td>
+        <td><button class="btn ghost sm" data-del>刪除</button></td></tr>`).join("") : `<tr><td colspan="4" class="muted">尚未設定路線</td></tr>`) + "</tbody>";
+    $("routesSummary").textContent = routes.length ? `共 ${routes.length} 條。` + c.divisions.map(d => `${d.label} ${routes.filter(r => r.divisions.includes(d.id)).length} 條`).join("、") : "";
+  }
+  $("routesTable").addEventListener("input", (e) => {
+    const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+    const r = routes[tr.dataset.i];
+    if (e.target.dataset.f === "id") r.id = e.target.value.toUpperCase();
+    if (e.target.dataset.f === "points") r.points = Number(e.target.value);
+    if (e.target.dataset.div) r.divisions = [...tr.querySelectorAll("[data-div]:checked")].map(x => x.dataset.div);
+    $("routesSummary").textContent = "（尚未儲存）";
+  });
+  $("routesTable").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-del]")) return;
+    routes.splice(e.target.closest("tr").dataset.i, 1); renderRoutes();
+  });
+  $("rAdd").onclick = () => {
+    const n = routes.length + 1;
+    routes.push({ id: "R" + String(n).padStart(2, "0"), points: 100 + (n - 1) * 50, divisions: [] }); renderRoutes();
+  };
+  $("rDefault").onclick = () => {
+    if (routes.length && !confirm("會覆蓋目前的路線設定，確定嗎？")) return;
+    // R01–R24，每組 8 條，相鄰組別共用 4 條；R01 = 100 分，每條 +50
+    const ids = c.divisions.map(d => d.id);
+    routes = Array.from({ length: 24 }, (_, i) => ({
+      id: "R" + String(i + 1).padStart(2, "0"),
+      points: 100 + i * 50,
+      divisions: ids.filter((_, k) => i >= k * 4 && i < k * 4 + 8),
+    }));
+    renderRoutes();
+  };
+  $("rCopyFrom").onchange = async () => {
+    const from = $("rCopyFrom").value; if (!from) return;
+    const src = (await api("GET", null, "?event=" + from)).routes;
+    if (!src.length) { alert("該場次沒有路線設定"); } else if (!routes.length || confirm(`以 ${evName[from]} 的 ${src.length} 條路線覆蓋目前設定？`)) { routes = src; renderRoutes(); }
+    $("rCopyFrom").value = "";
+  };
+  $("rSave").onclick = async () => {
+    try { routes = (await api("POST", { action: "saveRoutes", event: $("rEvent").value, routes })).routes; renderRoutes(); $("rMsg").innerHTML = `<span style="color:var(--ok)">✅ 已儲存</span>`; }
+    catch (er) { $("rMsg").innerHTML = `<span class="mismatch">${esc(er.message)}</span>`; }
+  };
+  $("rEvent").onchange = loadRoutes;
+
+  // ---------- 成績登錄 ----------
+  let sData = null;
+  async function loadScores(keepCat) {
+    const prev = $("sCat").value;
+    sData = await api("GET", null, "?event=" + $("sEvent").value);
+    $("sStatus").value = sData.status;
+    $("sView").href = "results.html?tab=" + $("sEvent").value;
+    $("sCat").innerHTML = sData.categories.map(cat => `<option value="${cat.key}">${esc(cat.label)}（${cat.members.length} 人）</option>`).join("");
+    if (keepCat && sData.categories.some(x => x.key === prev)) $("sCat").value = prev;
+    renderScores();
+  }
+  function renderScores() {
+    const cat = sData.categories.find(x => x.key === $("sCat").value);
+    const rts = sData.routes.filter(r => r.divisions.includes(cat.division)).sort((a, b) => a.points - b.points || a.id.localeCompare(b.id));
+    if (!sData.routes.length) { $("scoreArea").innerHTML = `<div class="alert info">這場還沒有設定路線，請先到「路線設定」。</div>`; return; }
+    if (!cat.members.length) { $("scoreArea").innerHTML = `<p class="muted">此組別沒有報名選手。</p>`; return; }
+    const pts = Object.fromEntries(rts.map(r => [r.id, r.points]));
+    $("scoreArea").innerHTML = `<div class="table-scroll"><table class="grid-table"><thead><tr><th>選手</th>
+      ${rts.map(r => `<th class="route-th">${esc(r.id)}<br><span class="muted">${r.points}</span></th>`).join("")}
+      <th>嘗試次數</th><th>總分</th><th></th></tr></thead><tbody>` +
+      cat.members.map(m => {
+        const e = sData.entries[m.code];
+        const total = (e?.tops || []).reduce((s, id) => s + (pts[id] || 0), 0);
+        return `<tr data-code="${esc(m.code)}"><td><b>${esc(m.name)}</b><br><span class="small muted">${esc(m.school)}</span></td>
+          ${rts.map(r => `<td><input type="checkbox" data-route="${esc(r.id)}" ${e?.tops?.includes(r.id) ? "checked" : ""}></td>`).join("")}
+          <td><input type="number" class="att" min="0" value="${e ? e.attempts : ""}" placeholder="—"></td>
+          <td><b data-total>${e ? total : "—"}</b></td>
+          <td style="white-space:nowrap">${e ? `<button class="btn ghost sm" data-clear>清除</button>` : `<span class="small muted">未出賽</span>`} <span class="saving"></span></td></tr>`;
+      }).join("") + `</tbody></table></div>`;
+  }
+  const saveTimers = {};
+  $("scoreArea").addEventListener("change", (e) => {
+    const tr = e.target.closest("tr[data-code]"); if (!tr) return;
+    const code = tr.dataset.code;
+    clearTimeout(saveTimers[code]);
+    tr.querySelector(".saving").textContent = "儲存中…";
+    saveTimers[code] = setTimeout(async () => {
+      const tops = [...tr.querySelectorAll("[data-route]:checked")].map(x => x.dataset.route);
+      const attempts = tr.querySelector(".att").value;
+      try {
+        const { entry } = await api("POST", { action: "saveResult", event: $("sEvent").value, code, tops, attempts });
+        sData.entries[code] = entry; renderScores();
+      } catch (er) { tr.querySelector(".saving").textContent = "❌ " + er.message; }
+    }, 400);
+  });
+  $("scoreArea").addEventListener("click", async (e) => {
+    if (!e.target.closest("[data-clear]")) return;
+    const code = e.target.closest("tr").dataset.code;
+    if (!confirm("清除此選手本場成績（視為未出賽）？")) return;
+    await api("POST", { action: "saveResult", event: $("sEvent").value, code, remove: true });
+    delete sData.entries[code]; renderScores();
+  });
+  $("sEvent").onchange = () => loadScores(false);
+  $("sCat").onchange = renderScores;
+  $("sStatus").onchange = async () => {
+    try { await api("POST", { action: "setResultStatus", event: $("sEvent").value, status: $("sStatus").value }); }
+    catch (er) { alert(er.message); }
   };
 
+  // ---------- 登入 ----------
+  $("login").addEventListener("submit", (e) => { e.preventDefault(); pw = $("pw").value; try { sessionStorage.setItem("adminpw", pw); } catch {} load(); });
+  $("logout").onclick = () => { try { sessionStorage.removeItem("adminpw"); } catch {} location.reload(); };
   if (pw) load();
 </script>
 </body>

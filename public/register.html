@@ -73,7 +73,7 @@
       <h3>💳 繳費方式：銀行轉帳</h3>
       <div id="payInfo" class="small"></div>
     </div>
-    <p style="margin-top:20px"><a class="btn" href="lookup.html" id="lookupLink">回報匯款末五碼 →</a> <a class="btn ghost" href="register.html">再報名一位</a></p>
+    <p style="margin-top:20px"><a class="btn" href="lookup.html" id="lookupLink">前往登錄繳費資訊 →</a> <a class="btn ghost" href="register.html">再報名一位</a></p>
   </div>
 </main>
 
@@ -149,8 +149,8 @@
     $("doneCode").textContent = data.code;
     const d = c.divisions.find(d => d.id === data.division);
     $("doneDetail").innerHTML = `選手：${esc(body.name)}<br>組別：${esc(d.label)}<br>場次：${data.events.map(id => esc(c.events.find(e => e.id === id).name)).join("、")}<br>應繳金額：<b>${fmt(data.amount)}</b>`;
-    $("payInfo").innerHTML = `銀行：${esc(c.payment.bank)}<br>帳號：<b>${esc(c.payment.account)}</b><br>戶名：${esc(c.payment.holder)}<br>金額：<b>${fmt(data.amount)}</b><br><br>請於 <b>${c.payment.deadlineDays} 天內</b> 完成轉帳，並到「查詢報名」回報匯款帳號末五碼。逾期未繳費將取消報名。`;
-    $("lookupLink").href = `lookup.html?code=${encodeURIComponent(data.code)}`;
+    $("payInfo").innerHTML = `銀行：${esc(c.payment.bank)}<br>帳號：<b>${esc(c.payment.account)}</b><br>戶名：${esc(c.payment.holder)}<br>金額：<b>${fmt(data.amount)}</b><br><br>請於 <b>${c.payment.deadlineDays} 天內</b> 完成轉帳，到「報名名單」找到選手，按「登錄繳費資訊」填寫匯款資料。逾期未繳費將取消報名。`;
+    $("lookupLink").href = `lookup.html?event=${data.events[0]}&code=${encodeURIComponent(data.code)}`;
     window.scrollTo({ top: 0 });
   }
 </script>

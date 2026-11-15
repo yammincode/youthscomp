@@ -2,10 +2,10 @@
 export const SERIES_NAME = "青少年攀岩系列賽";
 
 export const EVENTS = [
-  { id: "e1", order: 1, name: "第一場・A22", venue: "A22", date: "待公告", format: "大亂鬥", open: true },
-  { id: "e2", order: 2, name: "第二場・明德", venue: "明德", date: "待公告", format: "大亂鬥", open: true },
-  { id: "e3", order: 3, name: "第三場・大埔", venue: "大埔", date: "待公告", format: "大亂鬥", open: true },
-  { id: "e4", order: 4, name: "第四場・A22 正式賽", venue: "A22", date: "待公告", format: "正式賽", open: true },
+  { id: "e1", order: 1, name: "第一場・A22", venue: "A22", date: "待公告", format: "大亂鬥", open: true, seriesMultiplier: 1 },
+  { id: "e2", order: 2, name: "第二場・明德", venue: "明德", date: "待公告", format: "大亂鬥", open: true, seriesMultiplier: 1 },
+  { id: "e3", order: 3, name: "第三場・大埔", venue: "大埔", date: "待公告", format: "大亂鬥", open: true, seriesMultiplier: 1 },
+  { id: "e4", order: 4, name: "第四場・A22 正式賽", venue: "A22", date: "待公告", format: "正式賽", open: true, seriesMultiplier: 1.5 },
 ];
 
 export const PRICE_PER_EVENT = 1500;
@@ -37,6 +37,13 @@ export const DIVISIONS = [
 
 export const GENDER_SPLIT_THRESHOLD = 20;
 
+// 系列賽積分：依各場名次給分（第 21 名之後皆得 PARTICIPATION_POINTS）
+export const SERIES_POINTS = [100, 80, 65, 55, 50, 45, 40, 36, 32, 29, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8];
+export const PARTICIPATION_POINTS = 5;
+
+// 成績公布狀態
+export const RESULT_STATUS = { hidden: "未公布", live: "比賽進行中", review: "成績確認中", final: "正式成績" };
+
 // 匯款資訊（請改成實際帳戶）
 export const PAYMENT_INFO = {
   bank: "○○銀行（代碼 000）",
@@ -65,5 +72,8 @@ export function publicConfig() {
     divisions: DIVISIONS,
     genderSplitThreshold: GENDER_SPLIT_THRESHOLD,
     payment: PAYMENT_INFO,
+    seriesPoints: SERIES_POINTS,
+    participationPoints: PARTICIPATION_POINTS,
+    resultStatus: RESULT_STATUS,
   };
 }
