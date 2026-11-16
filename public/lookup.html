@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>報名名單｜青少年攀岩系列賽</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap" style="padding-top:28px">
+  <h1 style="margin:0 0 6px">報名名單</h1>
+  <p class="muted" style="margin:0 0 18px">匯款後請按「登錄繳費資訊」，主辦單位確認後狀態會改為「已繳費」。　<a href="#mine">用報名編號查詢 ↓</a></p>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="roster"><p class="muted">載入中…</p></div>
+
+  <section id="mine" style="max-width:560px">
+    <h2>查詢我的報名</h2>
+    <form id="q" class="card">
+      <div class="row">
+        <div class="field"><label class="lbl" for="code">報名編號</label><input type="text" id="code" autocapitalize="characters" required></div>
+        <div class="field"><label class="lbl" for="phone">監護人手機</label><input type="tel" id="phone" inputmode="numeric" required></div>
+      </div>
+      <button class="btn" type="submit">查詢</button>
+      <div id="qErr" class="alert err hidden"></div>
+    </form>
+    <div id="result" class="card hidden" style="margin-top:14px"></div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <form class="dlg" id="payForm" method="dialog">
+    <h3 style="margin-bottom:4px">登錄繳費資訊</h3>
+    <p class="small muted" id="payWho" style="margin-top:0"></p>
+    <div class="card small" id="bankInfo" style="padding:12px;margin-bottom:14px;box-shadow:none"></div>
+    <div class="field"><label class="lbl" for="pLast4">監護人手機末 4 碼（身分驗證）</label><input type="text" id="pLast4" inputmode="numeric" maxlength="4" required></div>
+    <div class="row">
+      <div class="field"><label class="lbl" for="pLast5">匯款帳號末 5 碼</label><input type="text" id="pLast5" inputmode="numeric" maxlength="5" required></div>
+      <div class="field"><label class="lbl" for="pAmount">匯款金額</label><input type="text" id="pAmount" inputmode="numeric" required></div>
+    </div>
+    <div class="field"><label class="lbl" for="pDate">匯款日期</label><input type="date" id="pDate" required></div>
+    <div id="payErr" class="alert err hidden"></div>
+    <div class="actions"><button type="button" class="btn ghost" id="payCancel">取消</button><button type="submit" class="btn" id="paySubmit">送出</button></div>
+  </form>
+</dialog>
+
+<script type="module">
+  import { loadConfig, fmt, esc, renderChrome, renderTabs, STATUS } from "./common.js";
+  renderChrome("lookup.html");
+  const c = await loadConfig();
+  const $ = (id) => document.getElementById(id);
+  const evName = Object.fromEntries(c.events.map(e => [e.id, e.name]));
+  const params = new URLSearchParams(location.search);
+  let current = params.get("event") || c.events[0].id;
+  let payTarget = null;
+
+  renderTabs($("tabs"), c.events.map(e => [e.id, e.name]), current, (id) => { current = id; loadRoster(); });
+
+  async function loadRoster() {
+    $("roster").innerHTML = `<p class="muted">載入中…</p>`;
+    const data = await (await fetch(`/api/roster?event=${current}`)).json();
+    const total = data.categories.reduce((s, cat) => s + cat.rows.length, 0);
+    $("roster").innerHTML = `<p class="small muted">共 ${total} 位選手</p>` + data.categories.map(cat => `
+      <div class="cat">
+        <h3>${esc(cat.label)} <small>${cat.rows.length} 人</small></h3>
+        ${cat.rows.length ? `<div class="table-scroll"><table>
+          <thead><tr><th style="width:44px">#</th><th>選手</th><th>學校</th><th>繳費狀態</th></tr></thead>
+          <tbody>${cat.rows.map((r, i) => `<tr>
+            <td class="muted">${i + 1}</td>
+            <td><b>${esc(r.name)}</b></td>
+            <td class="small">${esc(r.school)}</td>
+            <td>${r.status === "pending"
+              ? `<span class="badge pending">${STATUS.pending}</span> <button class="btn sm" data-pay='${esc(JSON.stringify({ code: r.code, name: r.name, events: r.events, amount: r.amount }))}'>登錄繳費資訊</button>`
+              : `<span class="badge ${r.status}">${STATUS[r.status]}</span>`}</td>
+          </tr>`).join("")}</tbody></table></div>` : `<p class="small muted">尚無報名</p>`}
+      </div>`).join("");
+  }
+
+  $("roster").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pay]");
+    if (!b) return;
+    payTarget = JSON.parse(b.dataset.pay);
+    $("payWho").textContent = `${payTarget.name}（${payTarget.events.map(id => evName[id]).join("、")}）・應繳 ${fmt(payTarget.amount)}`;
+    $("bankInfo").innerHTML = `匯款帳戶：${esc(c.payment.bank)}<br>帳號 <b>${esc(c.payment.account)}</b>　戶名 ${esc(c.payment.holder)}`;
+    $("payForm").reset();
+    $("pAmount").value = payTarget.amount;
+    $("pDate").value = new Date().toISOString().slice(0, 10);
+    $("payErr").classList.add("hidden");
+    $("dlg").showModal();
+  });
+  $("payCancel").onclick = () => $("dlg").close();
+
+  $("payForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("paySubmit").disabled = true;
+    try {
+      const res = await fetch("/api/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+        code: payTarget.code, phoneLast4: $("pLast4").value, last5: $("pLast5").value, amount: $("pAmount").value, date: $("pDate").value }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      $("dlg").close();
+      await loadRoster();
+      alert("已送出！主辦單位確認款項後，狀態會改為「已繳費」。");
+    } catch (er) {
+      $("payErr").textContent = er.message; $("payErr").classList.remove("hidden");
+    } finally { $("paySubmit").disabled = false; }
+  });
+
+  // 查詢我的報名
+  if (params.get("code")) { $("code").value = params.get("code"); }
+  $("q").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("qErr").classList.add("hidden");
+    const res = await fetch("/api/lookup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: $("code").value, phone: $("phone").value }) });
+    const r = await res.json();
+    if (!res.ok) { $("qErr").textContent = r.error; $("qErr").classList.remove("hidden"); $("result").classList.add("hidden"); return; }
+    const d = c.divisions.find(d => d.id === r.division);
+    $("result").innerHTML = `<h3>${esc(r.athleteName)}　<span class="badge ${r.status}">${STATUS[r.status]}</span></h3>
+      <div class="small">報名編號：<b>${esc(r.code)}</b><br>組別：${esc(d?.label)}<br>
+      場次：${r.events.map(id => esc(evName[id])).join("、")}<br>金額：<b>${fmt(r.amount)}</b>
+      ${r.payReport ? `<br>已登錄匯款：${esc(r.payReport.date)}・末五碼 ${esc(r.payReport.last5)}・${fmt(r.payReport.amount)}` : ""}</div>
+      ${r.rejectReason ? `<div class="alert err">繳費資訊被退回：${esc(r.rejectReason)}<br>請重新登錄或聯絡主辦單位。</div>` : ""}
+      ${r.status === "pending" ? `<p style="margin-bottom:0"><a class="btn sm" href="?event=${r.events[0]}#roster">到名單登錄繳費資訊</a></p>` : ""}`;
+    $("result").classList.remove("hidden");
+  });
+
+  loadRoster();
+</script>
+</body>
+</html>

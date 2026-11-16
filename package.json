@@ -1,0 +1,14 @@
+{
+  "name": "youthscomp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.9"
+  },
+  "devDependencies": {
+    "netlify-cli": "^27.19.0"
+  }
+}

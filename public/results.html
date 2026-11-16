@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>比賽成績｜青少年攀岩系列賽</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap" style="padding-top:28px">
+  <h1 style="margin:0 0 16px">比賽成績</h1>
+  <div class="tabs" id="tabs"></div>
+  <div id="statusLine" class="small" style="margin-bottom:14px"></div>
+  <div id="out"><p class="muted">載入中…</p></div>
+</main>
+<script type="module">
+  import { loadConfig, esc, renderChrome, renderTabs } from "./common.js";
+  renderChrome("results.html");
+  const c = await loadConfig();
+  const $ = (id) => document.getElementById(id);
+  const evName = Object.fromEntries(c.events.map(e => [e.id, e.name]));
+  const finalEv = c.events.find(e => e.format === "正式賽");
+  const tabs = [...c.events.map(e => [e.id, e.name]), ["series", "🏆 系列賽總排名"], ["startorder", "正式賽出場序"]];
+  const params = new URLSearchParams(location.search);
+  let current = tabs.some(t => t[0] === params.get("tab")) ? params.get("tab") : c.events[0].id;
+  let timer;
+
+  renderTabs($("tabs"), tabs, current, (id) => { current = id; history.replaceState(null, "", "?tab=" + id); load(); });
+
+  const medal = (rank) => rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank;
+  const table = (head, rows) => `<div class="table-scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const section = (cat, body, count) => `<div class="cat"><h3>${esc(cat.label)} <small>${count}</small></h3>${body}</div>`;
+  const empty = `<p class="small muted">尚無成績</p>`;
+
+  async function load() {
+    clearTimeout(timer);
+    $("out").innerHTML = `<p class="muted">載入中…</p>`;
+    $("statusLine").innerHTML = "";
+    if (current === "series") return renderSeries(await get("view=series"));
+    if (current === "startorder") return renderStartOrder(await get("view=startorder"));
+    const data = await get("event=" + current);
+    renderEvent(data);
+    if (data.status === "live") timer = setTimeout(load, 15000); // 進行中每 15 秒更新
+  }
+  const get = async (q) => (await fetch("/api/results?" + q)).json();
+
+  function renderEvent(d) {
+    if (d.status === "hidden") { $("out").innerHTML = `<div class="card muted">${esc(evName[d.event])} 成績尚未公布。</div>`; return; }
+    $("statusLine").innerHTML = d.status === "live" ? `<span class="live-dot"></span><b>比賽進行中</b>・每 15 秒自動更新`
+      : d.status === "review" ? `🕓 <b>成績確認中</b>・正式成績以主辦單位公布為準` : `✅ <b>正式成績</b>`;
+    const cats = d.categories.filter(cat => cat.rows.length);
+    if (!cats.length) { $("out").innerHTML = `<div class="card muted">尚無成績</div>`; return; }
+    $("out").innerHTML = cats.map(cat => section(cat, cat.rows.length ? table(
+      `<th>名次</th><th>選手</th><th>學校</th><th class="num">總分</th><th class="num">完攀</th><th class="num">嘗試</th>`,
+      cat.rows.map(r => `<tr class="${r.rank <= 2 ? "podium" : ""}"><td class="rank">${medal(r.rank)}</td><td><b>${esc(r.name)}</b></td>
+        <td class="small">${esc(r.school)}</td><td class="num"><b>${r.total}</b></td><td class="num">${r.tops}</td><td class="num">${r.attempts}</td></tr>`).join("")
+    ) : empty, `${cat.rows.length} 人`)).join("") +
+      `<p class="small muted">排名依總分 → 完攀條數多 → 嘗試次數少；完全相同則並列。每組前 2 名頒獎。</p>`;
+  }
+
+  function renderSeries(d) {
+    $("statusLine").innerHTML = d.finalEvents.length
+      ? `已計入：${d.finalEvents.map(id => esc(evName[id])).join("、")}` : `尚無正式成績場次`;
+    const pts = c.seriesPoints;
+    $("out").innerHTML = d.categories.map(cat => section(cat, cat.rows.length ? table(
+      `<th>名次</th><th>選手</th><th>學校</th>${c.events.map(e => `<th class="num">第${e.order}場</th>`).join("")}<th class="num">總積分</th>`,
+      cat.rows.map(r => `<tr class="${r.rank <= 3 ? "podium" : ""}"><td class="rank">${r.rank}</td><td><b>${esc(r.name)}</b></td><td class="small">${esc(r.school)}</td>
+        ${r.perEvent.map(p => `<td class="num small">${p ? `${p.points}<br><span class="muted">第${p.rank}名</span>` : "—"}</td>`).join("")}
+        <td class="num"><b>${r.total}</b></td></tr>`).join("")
+    ) : empty, `${cat.rows.length} 人`)).join("") +
+      `<p class="small muted">只列入四場都有報名的選手。各場依名次給分：第 1 名 ${pts[0]}、第 2 名 ${pts[1]}、第 3 名 ${pts[2]}…第 ${pts.length} 名 ${pts[pts.length - 1]}，之後 ${c.participationPoints} 分；${esc(finalEv.name)} 積分 ×${finalEv.seriesMultiplier}。</p>`;
+  }
+
+  function renderStartOrder(d) {
+    $("statusLine").innerHTML = d.basedOn.length
+      ? `依 ${d.basedOn.map(id => esc(evName[id])).join("、")} 的路線積分加總計算` : `大亂鬥場次尚未公布正式成績，目前為暫定順序`;
+    $("out").innerHTML = d.categories.map(cat => section(cat, cat.rows.length ? table(
+      `<th>出場序</th><th>選手</th><th>學校</th><th class="num">路線積分</th>`,
+      cat.rows.map(r => `<tr><td class="rank">${r.order}</td><td><b>${esc(r.name)}</b></td><td class="small">${esc(r.school)}</td><td class="num">${r.points}</td></tr>`).join("")
+    ) : `<p class="small muted">尚無報名</p>`, `${cat.rows.length} 人`)).join("") +
+      `<p class="small muted">${esc(finalEv.name)} 出場序：大亂鬥路線積分越高越晚出場（最高分最後出場）；同分者以抽籤決定。</p>`;
+  }
+
+  load();
+</script>
+</body>
+</html>

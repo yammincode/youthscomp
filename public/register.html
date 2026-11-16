@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>報名｜青少年攀岩系列賽</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap" style="padding-top:28px">
+  <div id="formView">
+    <h1 style="margin:0 0 6px">線上報名</h1>
+    <p class="muted" style="margin:0 0 24px">一位選手填寫一份。可選擇一場或多場，選滿四場自動套用套票價。</p>
+
+    <form id="f" novalidate>
+      <fieldset>
+        <legend>1. 選擇場次</legend>
+        <div class="event-pick" id="eventPick"></div>
+        <p style="margin:10px 0 0"><button type="button" class="btn ghost sm" id="pickAll">全選四場（套票價）</button></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>2. 選手資料</legend>
+        <div class="row">
+          <div class="field"><label class="lbl" for="name">選手姓名<span class="req">*</span></label><input type="text" id="name" name="name" autocomplete="off" required></div>
+          <div class="field"><label class="lbl">性別<span class="req">*</span></label>
+            <div class="seg"><label><input type="radio" name="gender" value="M" required>男</label><label><input type="radio" name="gender" value="F">女</label></div></div>
+        </div>
+        <div class="row">
+          <div class="field"><label class="lbl" for="birthday">生日<span class="req">*</span></label><input type="date" id="birthday" name="birthday" required></div>
+          <div class="field"><label class="lbl" for="grade">年級（本學年度）<span class="req">*</span></label><select id="grade" name="grade" required><option value="">請選擇</option></select></div>
+        </div>
+        <div class="alert info hidden" id="divInfo"></div>
+        <div class="row">
+          <div class="field"><label class="lbl" for="school">就讀學校<span class="req">*</span></label><input type="text" id="school" name="school" required></div>
+          <div class="field"><label class="lbl" for="team">所屬隊伍／教練（選填）</label><input type="text" id="team" name="team"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>3. 監護人與緊急聯絡</legend>
+        <div class="row">
+          <div class="field"><label class="lbl" for="guardianName">監護人姓名<span class="req">*</span></label><input type="text" id="guardianName" name="guardianName" required></div>
+          <div class="field"><label class="lbl" for="guardianPhone">監護人手機<span class="req">*</span></label><input type="tel" id="guardianPhone" name="guardianPhone" placeholder="0912345678" inputmode="numeric" required></div>
+        </div>
+        <div class="field"><label class="lbl" for="guardianEmail">Email<span class="req">*</span></label><input type="email" id="guardianEmail" name="guardianEmail" required></div>
+        <div class="row">
+          <div class="field"><label class="lbl" for="emergencyName">緊急聯絡人<span class="req">*</span></label><input type="text" id="emergencyName" name="emergencyName" required></div>
+          <div class="field"><label class="lbl" for="emergencyPhone">緊急聯絡電話<span class="req">*</span></label><input type="tel" id="emergencyPhone" name="emergencyPhone" inputmode="numeric" required></div>
+        </div>
+        <div class="field"><label class="lbl" for="note">備註（選填）</label><textarea id="note" name="note" rows="2" placeholder="例如：過敏、特殊需求"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>4. 同意事項</legend>
+        <label class="check"><input type="checkbox" name="agreeWaiver">我是選手的法定監護人，了解攀岩運動具有一定風險，同意選手參賽並遵守大會規則與裁判判決。</label>
+        <label class="check"><input type="checkbox" name="agreePrivacy">同意主辦單位蒐集上述個人資料，用於本系列賽報名、保險、聯絡與成績公告（公告時姓名將部分遮蔽）。</label>
+      </fieldset>
+
+      <div id="err" class="alert err hidden"></div>
+    </form>
+  </div>
+
+  <div id="doneView" class="hidden" style="padding:12px 0 40px">
+    <h1 style="margin:0 0 8px">✅ 報名完成！</h1>
+    <p>請記下您的<b>報名編號</b>，查詢與回報匯款時需要使用：</p>
+    <p><span class="code-box" id="doneCode"></span></p>
+    <div class="card" style="margin-top:18px">
+      <h3>報名內容</h3>
+      <div id="doneDetail" class="small"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>💳 繳費方式：銀行轉帳</h3>
+      <div id="payInfo" class="small"></div>
+    </div>
+    <p style="margin-top:20px"><a class="btn" href="lookup.html" id="lookupLink">前往登錄繳費資訊 →</a> <a class="btn ghost" href="register.html">再報名一位</a></p>
+  </div>
+</main>
+
+<div class="summary" id="summary">
+  <div class="wrap">
+    <div><div class="price" id="total">NT$ 0</div><div class="small muted" id="sumText">尚未選擇場次</div></div>
+    <button class="btn" id="submitBtn" form="f" type="submit">送出報名</button>
+  </div>
+</div>
+
+<script type="module">
+  import { loadConfig, fmt, esc, renderChrome } from "./common.js";
+  renderChrome("register.html");
+  const c = await loadConfig();
+  const $ = (id) => document.getElementById(id);
+  const f = $("f");
+
+  $("eventPick").innerHTML = c.events.map(e => `
+    <label class="${e.open ? "" : "disabled"}">
+      <input type="checkbox" name="events" value="${e.id}" ${e.open ? "" : "disabled"}>
+      <div><div class="nm">${esc(e.name)}</div><div class="small muted">${esc(e.format)}・${esc(e.date)}${e.open ? "" : "・已截止"}</div></div>
+    </label>`).join("");
+  $("grade").innerHTML += c.grades.map(g => `<option value="${g.id}">${g.label}</option>`).join("");
+
+  const picked = () => [...f.querySelectorAll("input[name=events]:checked")].map(i => i.value);
+  const price = (n) => n === c.events.length ? c.priceAllEvents : n * c.pricePerEvent;
+
+  function updateSummary() {
+    const n = picked().length;
+    $("total").textContent = fmt(price(n));
+    if (!n) $("sumText").textContent = "尚未選擇場次";
+    else if (n === c.events.length) $("sumText").innerHTML = `四場套票 <span class="save">省 ${fmt(n * c.pricePerEvent - c.priceAllEvents)}</span>`;
+    else $("sumText").textContent = `${n} 場 × ${fmt(c.pricePerEvent)}` + (n === c.events.length - 1 ? `（再加 ${fmt(c.priceAllEvents - n * c.pricePerEvent)} 即可報滿四場）` : "");
+  }
+  f.addEventListener("change", updateSummary);
+  $("pickAll").onclick = () => { f.querySelectorAll("input[name=events]:not(:disabled)").forEach(i => i.checked = true); updateSummary(); };
+
+  $("grade").addEventListener("change", () => {
+    const d = c.divisions.find(d => d.grades.includes($("grade").value));
+    $("divInfo").classList.toggle("hidden", !d);
+    if (d) $("divInfo").textContent = `👉 參賽組別：${d.label}` + (d.splitByGender ? `（單一性別超過 ${c.genderSplitThreshold} 人時拆男女組）` : "");
+  });
+
+  f.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(f);
+    const body = Object.fromEntries(fd.entries());
+    body.events = picked();
+    body.agreeWaiver = fd.has("agreeWaiver");
+    body.agreePrivacy = fd.has("agreePrivacy");
+    $("err").classList.add("hidden");
+    $("submitBtn").disabled = true;
+    $("submitBtn").textContent = "送出中…";
+    try {
+      const res = await fetch("/api/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "報名失敗，請稍後再試");
+      showDone(data, body);
+    } catch (e) {
+      $("err").textContent = e.message;
+      $("err").classList.remove("hidden");
+      $("err").scrollIntoView({ behavior: "smooth", block: "center" });
+    } finally {
+      $("submitBtn").disabled = false;
+      $("submitBtn").textContent = "送出報名";
+    }
+  });
+
+  function showDone(data, body) {
+    $("formView").classList.add("hidden");
+    $("summary").classList.add("hidden");
+    $("doneView").classList.remove("hidden");
+    $("doneCode").textContent = data.code;
+    const d = c.divisions.find(d => d.id === data.division);
+    $("doneDetail").innerHTML = `選手：${esc(body.name)}<br>組別：${esc(d.label)}<br>場次：${data.events.map(id => esc(c.events.find(e => e.id === id).name)).join("、")}<br>應繳金額：<b>${fmt(data.amount)}</b>`;
+    $("payInfo").innerHTML = `銀行：${esc(c.payment.bank)}<br>帳號：<b>${esc(c.payment.account)}</b><br>戶名：${esc(c.payment.holder)}<br>金額：<b>${fmt(data.amount)}</b><br><br>請於 <b>${c.payment.deadlineDays} 天內</b> 完成轉帳，到「報名名單」找到選手，按「登錄繳費資訊」填寫匯款資料。逾期未繳費將取消報名。`;
+    $("lookupLink").href = `lookup.html?event=${data.events[0]}&code=${encodeURIComponent(data.code)}`;
+    window.scrollTo({ top: 0 });
+  }
+</script>
+</body>
+</html>
