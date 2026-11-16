@@ -11,29 +11,18 @@ export const EVENTS = [
 export const PRICE_PER_EVENT = 1500;
 export const PRICE_ALL_EVENTS = 5000; // 四場套票
 
-export const GRADES = [
-  { id: "e1", label: "國小一年級" },
-  { id: "e2", label: "國小二年級" },
-  { id: "e3", label: "國小三年級" },
-  { id: "e4", label: "國小四年級" },
-  { id: "e5", label: "國小五年級" },
-  { id: "e6", label: "國小六年級" },
-  { id: "j1", label: "國中一年級" },
-  { id: "j2", label: "國中二年級" },
-  { id: "j3", label: "國中三年級" },
-  { id: "h1", label: "高中一年級" },
-  { id: "h2", label: "高中二年級" },
-  { id: "h3", label: "高中三年級" },
-];
+// 比賽年度：年齡以「該年 12 月 31 日」計算（國際攀岩總會規則），即 年齡 = 比賽年度 − 出生年
+export const SEASON_YEAR = 2027;
 
+// 國際賽年齡分組（由易到難排列，路線梯度依此順序）
 // splitByGender: 單一性別超過 GENDER_SPLIT_THRESHOLD 人時拆男女組
 export const DIVISIONS = [
-  { id: "G1", label: "國小 1–3 年級組", grades: ["e1", "e2", "e3"], splitByGender: false },
-  { id: "G2", label: "國小 4–5 年級組", grades: ["e4", "e5"], splitByGender: true },
-  { id: "G3", label: "小六・國一組", grades: ["e6", "j1"], splitByGender: true },
-  { id: "G4", label: "國二・國三組", grades: ["j2", "j3"], splitByGender: true },
-  { id: "G5", label: "高中組", grades: ["h1", "h2", "h3"], splitByGender: true },
-];
+  { id: "K", label: "K 組", intl: "U11 兒童", minAge: 6, maxAge: 10, splitByGender: false },
+  { id: "D", label: "Youth D", intl: "U13", minAge: 11, maxAge: 12, splitByGender: true },
+  { id: "C", label: "Youth C", intl: "U15", minAge: 13, maxAge: 14, splitByGender: true },
+  { id: "B", label: "Youth B", intl: "U17", minAge: 15, maxAge: 16, splitByGender: true },
+  { id: "A", label: "Youth A", intl: "U19", minAge: 17, maxAge: 18, splitByGender: true },
+].map((d) => ({ ...d, bornFrom: SEASON_YEAR - d.maxAge, bornTo: SEASON_YEAR - d.minAge }));
 
 export const GENDER_SPLIT_THRESHOLD = 20;
 
@@ -52,8 +41,11 @@ export const PAYMENT_INFO = {
   deadlineDays: 3,
 };
 
-export function divisionForGrade(gradeId) {
-  return DIVISIONS.find((d) => d.grades.includes(gradeId)) || null;
+export const ageInSeason = (birthday) => SEASON_YEAR - Number(String(birthday).slice(0, 4));
+
+export function divisionForBirthday(birthday) {
+  const age = ageInSeason(birthday);
+  return DIVISIONS.find((d) => age >= d.minAge && age <= d.maxAge) || null;
 }
 
 export function priceFor(eventIds) {
@@ -68,7 +60,7 @@ export function publicConfig() {
     events: EVENTS,
     pricePerEvent: PRICE_PER_EVENT,
     priceAllEvents: PRICE_ALL_EVENTS,
-    grades: GRADES,
+    seasonYear: SEASON_YEAR,
     divisions: DIVISIONS,
     genderSplitThreshold: GENDER_SPLIT_THRESHOLD,
     payment: PAYMENT_INFO,

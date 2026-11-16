@@ -133,3 +133,4 @@ dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top
 th { white-space: nowrap; }
 td b { white-space: nowrap; }
 @media (max-width: 560px) { th, td { padding: 8px 8px; font-size: 14px; } }
+.nw { white-space: nowrap; }

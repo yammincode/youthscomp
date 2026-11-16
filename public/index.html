@@ -11,7 +11,7 @@
 <main class="wrap">
   <div class="hero">
     <h1>青少年攀岩系列賽<br>四站挑戰，等你來爬！</h1>
-    <p>三場大亂鬥＋一場正式賽。上午比賽、下午練習，國小到高中都能參加。</p>
+    <p>三場大亂鬥＋一場正式賽。採國際賽年齡分組，上午比賽、下午練習。</p>
     <a class="btn" href="register.html">立即報名 →</a>
     <a class="btn ghost" href="#rules" style="margin-left:8px">看規則</a>
   </div>
@@ -32,7 +32,7 @@
   <section>
     <h2>組別</h2>
     <div class="table-scroll"><table>
-      <thead><tr><th>組別</th><th>年級</th><th>性別</th></tr></thead>
+      <thead><tr><th>組別</th><th>國際對應</th><th>出生年</th><th>年齡</th><th>男女</th></tr></thead>
       <tbody id="divs"></tbody>
     </table></div>
     <p class="muted small" id="splitNote"></p>
@@ -54,8 +54,8 @@
       <tbody>
         <tr><td>07:45</td><td>報到、領號碼布／感應手環</td></tr>
         <tr><td>08:30</td><td>開幕、規則說明</td></tr>
-        <tr><td>09:00</td><td>A 梯次比賽（1–3 年級、小六國一、高中）</td></tr>
-        <tr><td>10:30</td><td>B 梯次比賽（4–5 年級、國二國三）</td></tr>
+        <tr><td>09:00</td><td>A 梯次比賽（K 組、Youth C、Youth A）</td></tr>
+        <tr><td>10:30</td><td>B 梯次比賽（Youth D、Youth B）</td></tr>
         <tr><td>12:15</td><td>頒獎</td></tr>
         <tr><td>13:30–16:00</td><td>比賽路線開放練習</td></tr>
       </tbody>
@@ -77,11 +77,10 @@
   document.getElementById("p1").innerHTML = `${fmt(c.pricePerEvent)}<small>／場</small>`;
   document.getElementById("p4").innerHTML = `${fmt(c.priceAllEvents)}<small>／四場</small>`;
   document.getElementById("p4save").textContent = `比單場報名省 ${fmt(c.pricePerEvent * c.events.length - c.priceAllEvents)}。`;
-  const gl = Object.fromEntries(c.grades.map(g => [g.id, g.label]));
   document.getElementById("divs").innerHTML = c.divisions.map(d => `
-    <tr><td><b>${esc(d.label)}</b></td><td>${d.grades.map(g => gl[g]).join("、")}</td>
-    <td>${d.splitByGender ? "原則男女混合＊" : "男女混合"}</td></tr>`).join("");
-  document.getElementById("splitNote").textContent = `＊單一性別報名超過 ${c.genderSplitThreshold} 人時，該組拆為男子組、女子組分開排名。年級以本學年度為準，系統依年級自動分組。`;
+    <tr><td><b>${esc(d.label)}</b></td><td class="nw">${esc(d.intl)}</td><td class="nw">${d.bornFrom}–${d.bornTo}</td><td class="nw">${d.minAge}–${d.maxAge}</td>
+    <td>${d.splitByGender ? "混合＊" : "混合"}</td></tr>`).join("");
+  document.getElementById("splitNote").textContent = `＊單一性別報名超過 ${c.genderSplitThreshold} 人時，該組拆為男子組、女子組分開排名。依國際攀岩總會規則，年齡以 ${c.seasonYear} 年 12 月 31 日計算（＝${c.seasonYear} − 出生年），系統依生日自動分組。`;
 </script>
 </body>
 </html>

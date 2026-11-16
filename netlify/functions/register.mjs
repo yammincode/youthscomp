@@ -1,4 +1,4 @@
-import { EVENTS, GRADES, divisionForGrade, priceFor } from "../../shared/config.mjs";
+import { EVENTS, DIVISIONS, SEASON_YEAR, divisionForBirthday, priceFor } from "../../shared/config.mjs";
 import { json, regStore, listRegistrations, normPhone, clean } from "../lib/store.mjs";
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -20,7 +20,6 @@ export default async (req) => {
     gender: body.gender === "M" || body.gender === "F" ? body.gender : "",
     birthday: /^\d{4}-\d{2}-\d{2}$/.test(body.birthday || "") ? body.birthday : "",
     school: clean(body.school, 50),
-    grade: GRADES.some((g) => g.id === body.grade) ? body.grade : "",
     team: clean(body.team, 50),
   };
   const g = {
@@ -36,7 +35,10 @@ export default async (req) => {
   if (!a.gender) errors.push("請選擇性別");
   if (!a.birthday) errors.push("請填寫生日");
   if (!a.school) errors.push("請填寫就讀學校");
-  if (!a.grade) errors.push("請選擇年級");
+  if (a.birthday && !divisionForBirthday(a.birthday)) {
+    const lo = DIVISIONS[DIVISIONS.length - 1].bornFrom, hi = DIVISIONS[0].bornTo;
+    errors.push(`${SEASON_YEAR} 年賽事開放 ${lo}–${hi} 年出生的選手參加`);
+  }
   if (!g.name) errors.push("請填寫監護人姓名");
   if (!/^09\d{8}$/.test(g.phone)) errors.push("監護人手機格式錯誤（09 開頭 10 碼）");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email)) errors.push("Email 格式錯誤");
@@ -69,7 +71,7 @@ export default async (req) => {
     );
   }
 
-  const division = divisionForGrade(a.grade);
+  const division = divisionForBirthday(a.birthday);
   const store = regStore();
   let code;
   do code = makeCode();

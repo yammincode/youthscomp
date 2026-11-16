@@ -28,13 +28,10 @@
         </div>
         <div class="row">
           <div class="field"><label class="lbl" for="birthday">生日<span class="req">*</span></label><input type="date" id="birthday" name="birthday" required></div>
-          <div class="field"><label class="lbl" for="grade">年級（本學年度）<span class="req">*</span></label><select id="grade" name="grade" required><option value="">請選擇</option></select></div>
+          <div class="field"><label class="lbl" for="school">就讀學校<span class="req">*</span></label><input type="text" id="school" name="school" required></div>
         </div>
         <div class="alert info hidden" id="divInfo"></div>
-        <div class="row">
-          <div class="field"><label class="lbl" for="school">就讀學校<span class="req">*</span></label><input type="text" id="school" name="school" required></div>
-          <div class="field"><label class="lbl" for="team">所屬隊伍／教練（選填）</label><input type="text" id="team" name="team"></div>
-        </div>
+        <div class="field"><label class="lbl" for="team">所屬隊伍／教練（選填）</label><input type="text" id="team" name="team"></div>
       </fieldset>
 
       <fieldset>
@@ -96,7 +93,6 @@
       <input type="checkbox" name="events" value="${e.id}" ${e.open ? "" : "disabled"}>
       <div><div class="nm">${esc(e.name)}</div><div class="small muted">${esc(e.format)}・${esc(e.date)}${e.open ? "" : "・已截止"}</div></div>
     </label>`).join("");
-  $("grade").innerHTML += c.grades.map(g => `<option value="${g.id}">${g.label}</option>`).join("");
 
   const picked = () => [...f.querySelectorAll("input[name=events]:checked")].map(i => i.value);
   const price = (n) => n === c.events.length ? c.priceAllEvents : n * c.pricePerEvent;
@@ -111,10 +107,15 @@
   f.addEventListener("change", updateSummary);
   $("pickAll").onclick = () => { f.querySelectorAll("input[name=events]:not(:disabled)").forEach(i => i.checked = true); updateSummary(); };
 
-  $("grade").addEventListener("change", () => {
-    const d = c.divisions.find(d => d.grades.includes($("grade").value));
-    $("divInfo").classList.toggle("hidden", !d);
-    if (d) $("divInfo").textContent = `👉 參賽組別：${d.label}` + (d.splitByGender ? `（單一性別超過 ${c.genderSplitThreshold} 人時拆男女組）` : "");
+  $("birthday").addEventListener("change", () => {
+    const v = $("birthday").value;
+    $("divInfo").classList.toggle("hidden", !v);
+    if (!v) return;
+    const y = Number(v.slice(0, 4)), age = c.seasonYear - y;
+    const d = c.divisions.find(d => age >= d.minAge && age <= d.maxAge);
+    $("divInfo").textContent = d
+      ? `👉 參賽組別：${d.label}（${d.intl}，${c.seasonYear} 年滿 ${age} 歲）` + (d.splitByGender ? `；單一性別超過 ${c.genderSplitThreshold} 人時拆男女組` : "")
+      : `⚠️ ${c.seasonYear} 年賽事開放 ${c.divisions[c.divisions.length - 1].bornFrom}–${c.divisions[0].bornTo} 年出生的選手參加`;
   });
 
   f.addEventListener("submit", async (ev) => {

@@ -102,7 +102,7 @@
   try { pw = sessionStorage.getItem("adminpw") || ""; } catch {}
   const evName = Object.fromEntries(c.events.map(e => [e.id, e.name]));
   const divById = Object.fromEntries(c.divisions.map(d => [d.id, d]));
-  const gradeLabel = Object.fromEntries(c.grades.map(g => [g.id, g.label]));
+  const ageLabel = (b) => `${String(b).slice(0, 4)} 年生・${c.seasonYear - Number(String(b).slice(0, 4))} 歲`;
   const evOptions = c.events.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
   $("fEvent").innerHTML += evOptions;
   $("fDiv").innerHTML += c.divisions.map(d => `<option value="${d.id}">${esc(d.label)}</option>`).join("");
@@ -170,7 +170,7 @@
     $("list").innerHTML = `<thead><tr><th>編號</th><th>選手</th><th>組別</th><th>場次</th><th>金額</th><th>監護人</th><th>匯款資訊</th><th>狀態</th><th>報名時間</th></tr></thead><tbody>` +
       (list.length ? list.map(r => `<tr>
         <td><b>${esc(r.code)}</b></td>
-        <td>${esc(r.athlete.name)}　${r.athlete.gender === "M" ? "男" : "女"}<br><span class="small muted">${esc(gradeLabel[r.athlete.grade])}・${esc(r.athlete.school)}${r.athlete.team ? "・" + esc(r.athlete.team) : ""}</span>${r.note ? `<br><span class="small">📝 ${esc(r.note)}</span>` : ""}</td>
+        <td>${esc(r.athlete.name)}　${r.athlete.gender === "M" ? "男" : "女"}<br><span class="small muted">${esc(ageLabel(r.athlete.birthday))}・${esc(r.athlete.school)}${r.athlete.team ? "・" + esc(r.athlete.team) : ""}</span>${r.note ? `<br><span class="small">📝 ${esc(r.note)}</span>` : ""}</td>
         <td class="small">${esc(divById[r.division]?.label)}</td>
         <td class="small">${r.events.map(id => esc(evName[id])).join("<br>")}</td>
         <td>${fmt(r.amount)}</td>
@@ -206,8 +206,8 @@
   $("reload").onclick = load;
 
   $("csv").onclick = () => {
-    const cols = ["報名編號", "報名時間", "狀態", "選手姓名", "性別", "生日", "年級", "學校", "隊伍/教練", "組別", ...c.events.map(e => e.name), "金額", "匯款日期", "匯款末五碼", "匯款金額", "監護人", "監護人手機", "Email", "緊急聯絡人", "緊急聯絡電話", "備註"];
-    const rows = filtered().map(r => [r.code, new Date(r.createdAt).toLocaleString("zh-TW", { hour12: false }), STATUS[r.status], r.athlete.name, r.athlete.gender === "M" ? "男" : "女", r.athlete.birthday, gradeLabel[r.athlete.grade], r.athlete.school, r.athlete.team, divById[r.division]?.label,
+    const cols = ["報名編號", "報名時間", "狀態", "選手姓名", "性別", "生日", "年齡", "學校", "隊伍/教練", "組別", ...c.events.map(e => e.name), "金額", "匯款日期", "匯款末五碼", "匯款金額", "監護人", "監護人手機", "Email", "緊急聯絡人", "緊急聯絡電話", "備註"];
+    const rows = filtered().map(r => [r.code, new Date(r.createdAt).toLocaleString("zh-TW", { hour12: false }), STATUS[r.status], r.athlete.name, r.athlete.gender === "M" ? "男" : "女", r.athlete.birthday, c.seasonYear - Number(r.athlete.birthday.slice(0, 4)), r.athlete.school, r.athlete.team, divById[r.division]?.label,
       ...c.events.map(e => r.events.includes(e.id) ? "V" : ""), r.amount, r.payReport?.date, r.payReport?.last5 || r.transferLast5, r.payReport?.amount, r.guardian.name, r.guardian.phone, r.guardian.email, r.guardian.emergencyName, r.guardian.emergencyPhone, r.note]);
     downloadCsv([cols, ...rows], `報名名單_${new Date().toISOString().slice(0, 10)}.csv`);
   };
